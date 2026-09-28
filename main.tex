@@ -1,0 +1,120 @@
+\documentclass[12pt,a4paper]{article}
+
+%% Kodowanie i język polski
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{polish}
+
+%% Czcionki – wymagania ATINS (TNR → Liberation Serif – metryczny zamiennik)
+\setmainfont{Liberation Serif}
+
+%% Geometria strony
+\usepackage{geometry}
+\geometry{
+  a4paper,
+  left=2.5cm,
+  right=2.5cm,
+  top=2.5cm,
+  bottom=2.5cm,
+}
+
+%% Interlinia
+\usepackage{setspace}
+\onehalfspacing
+
+%% Przypisy dolne – 10 pkt (wymaganie ATINS)
+\usepackage[bottom]{footmisc}
+\renewcommand{\footnotesize}{\fontsize{10pt}{12pt}\selectfont}
+
+%% Pakiety naukowe
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{csquotes}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, shadows}
+
+%% Listingi kodu
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.96,0.96,0.94}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\linespread{1.0}\ttfamily\footnotesize\selectfont,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+%% Bibliografia
+\usepackage[
+  backend=biber,
+  style=numeric,
+  sorting=none,
+  maxnames=3,
+  minnames=1,
+]{biblatex}
+\addbibresource{bibliography.bib}
+
+%%----------------------------------------------
+\begin{document}
+\sloppy
+
+%% Tytuł i autor
+\title{%
+  \Large\bfseries
+  Bezpieczna kompartmentaryzacja stacji roboczej\\
+  w środowisku akademickim: wykorzystanie Qubes OS\\
+  w działaniach OSINT, programowaniu oraz bezpiecznej detonacji i weryfikacji prac studenckich%
+}
+\author{Przemysław Żarnecki\\
+  \small Akademia Techniczno-Informatyczna Nauk Stosowanych we Wrocławiu\\
+  \small \texttt{pzarnecki@protonmail.com}
+}
+\date{}
+\maketitle
+
+%% Streszczenie
+\begin{abstract}
+\noindent
+Współczesne środowisko akademickie stawia przed studentami i nauczycielami akademickimi wyzwania wymagające operowania na niezweryfikowanych danych, repozytoriach kodu oraz zasobach sieciowych. Działania takie jak pozyskiwanie informacji jawnoźródłowych (OSINT), analiza ofert rynkowych, testowanie zewnętrznych bibliotek programistycznych podatnych na ataki łańcucha dostaw oraz laboratoryjna ocena nadsyłanego przez studentów kodu źródłowego niosą wysokie ryzyko naruszenia prywatności, profilowania cyfrowego lub kompromitacji stacji roboczej. Niniejszy artykuł przedstawia kompleksowy model bezpiecznej stacji akademickiej opartej na kompartmentaryzacji sprzętowej z wykorzystaniem hipernadzorcy typu 1 (Xen) i systemu Qubes OS 4.2. W pracy zdefiniowano formalny model stref zaufania (Academic Compartmentalization Framework -- ACF), zaproponowano bezśladowy potok wywiadu jawnoźródłowego oparty na jednorazowych maszynach Whonix oraz opracowano mechanizm Zero-Trust Student Code Evaluation Pipeline (ZT-SCEP), wykorzystujący Qubes RPC (\texttt{qrexec}) do zautomatyzowanej detonacji i oceny prac laboratoryjnych bez dostępu do sieci. Przeprowadzona ewaluacja empiryczna wykazała, że narzut pamięciowy i czas uruchamiania środowisk efemerycznych (średnio 2,4~s) są w pełni akceptowalne w codziennej pracy dydaktycznej, zapewniając bezwzględną odporność stacji bazowej na próby ucieczki kodu, pętle widelcowe (\textit{fork bombs}) i eksfiltrację tożsamości kryptograficznej.
+
+\medskip
+\noindent
+\textbf{Słowa kluczowe:} Qubes OS, kompartmentaryzacja, OSINT, cyberbezpieczeństwo akademickie, detonacja kodu, qrexec, ocena prac studenckich, ochrona prywatności, suwerenność cyfrowa.
+\end{abstract}
+
+%%----------------------------------------------
+\input{sections/01_wprowadzenie}
+\input{sections/02_przeglad_literatury}
+\input{sections/03_architektura_i_model}
+\input{sections/04_scenariusze_akademickie}
+\input{sections/05_ewaluacja_empiryczna}
+\input{sections/06_dyskusja_i_wdrozenie}
+\input{sections/07_podsumowanie}
+
+%%----------------------------------------------
+\begin{singlespace}
+\printbibliography[title={Bibliografia}]
+\end{singlespace}
+
+\end{document}

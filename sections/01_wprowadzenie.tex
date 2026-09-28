@@ -1,0 +1,20 @@
+\section{Wprowadzenie}
+\label{sec:wprowadzenie}
+
+Codzienna praca badawczo-dydaktyczna w uczelniach technicznych wymaga przetwarzania danych z niepewnych źródeł zewnętrznych. Wykładowcy, naukowcy i studenci stają w obliczu trzech kluczowych wektorów operacyjnych:
+\begin{enumerate}[label=\alph*)]
+    \item \textbf{Wywiad jawnoźródłowy (OSINT) i monitoring rynku:} poszukiwanie literatury, analiza repozytoriów, weryfikacja ofert praktyk i pracy w portalach rekrutacyjnych oraz monitoring cyberzagrożeń. Działania te narażają na agresywne profilowanie behawioralne, deanonymizację tożsamości akademickiej oraz pobieranie spreparowanych plików (np. dokumentów PDF z exploitami);
+    \item \textbf{Wytwarzanie oprogramowania a łańcuch dostaw:} laboratoryjne projekty programistyczne opierają się na ekosystemach \texttt{npm}, \texttt{pip} czy \texttt{cargo}. Narastająca liczba ataków typu \textit{supply chain} oraz \textit{typosquatting} sprawia, że instalacja pakietu może skutkować kradzieżą kluczy SSH lub tokenów API z dysku dewelopera~\cite{ohm2020backstabber,ladisa2023sok};
+    \item \textbf{Ocena nadsyłanych prac laboratoryjnych:} nauczyciel akademicki otrzymuje w semestrze setki archiwów z kodem źródłowym i binariami. Uruchomienie takiego kodu na stacji prowadzącego niesie ryzyko: od przypadkowych pętli forkowania (\textit{fork bomb}), po złośliwe skrypty eksfiltrujące dane przez sieć uczelnianą~\cite{edwards2017grading}.
+\end{enumerate}
+
+Tradycyjne podejście oparte na systemach monolitycznych z antywirusami jest bezsilne wobec ataków ukierunkowanych i nieznanych podatności (\textit{zero-day})~\cite{nask_cyberuczelnia2025,enisa_threat_landscape2024}. Z kolei konteneryzacja (np. Docker) nie zapewnia twardej granicy bezpieczeństwa ze względu na współdzielenie jądra (\textit{shared-kernel}) i częste ucieczki do hosta (\textit{container breakout})~\cite{sultan2019containers}. 
+
+Odpowiedzią na te zagrożenia jest paradygmat \textbf{bezpieczeństwa przez kompartmentaryzację} (\textit{security by compartmentalization}), zaimplementowany w systemie \textbf{Qubes OS}~\cite{rutkowska2010qubes}. Wykorzystując hipernadzorca typu 1 (Xen), Qubes OS izoluje poszczególne sfery aktywności w niezależnych, sprzętowo odizolowanych maszynach wirtualnych (AppVMs i Disposable VMs).
+
+Celem niniejszego artykułu jest opracowanie, wdrożenie i empiryczna ewaluacja zintegrowanego modelu stacji akademickiej opartej na systemie Qubes OS 4.2. W pracy przedstawiono nowatorskie mechanizmy:
+\begin{itemize}
+    \item koncepcję zanonimizowanego i bezśladowego potoku badawczego OSINT opartego na jednorazowych maszynach Whonix, eliminującego ryzyko profilowania tożsamości akademickiej;
+    \item architekturę separacji tożsamości deweloperskiej z wykorzystaniem mechanizmów Split-SSH i Split-GPG, zabezpieczającą proces badawczo-rozwojowy przed kompromitacją łańcucha dostaw;
+    \item autorski potok \textit{Zero-Trust Student Code Evaluation Pipeline} (ZT-SCEP), realizujący bezpieczną, automatyczną detonację i weryfikację prac studenckich przy użyciu magistrali Qubes RPC (\texttt{qrexec}) w efemerycznych domenach bez dostępu do sieci.
+\end{itemize}

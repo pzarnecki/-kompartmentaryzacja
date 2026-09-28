@@ -1,0 +1,27 @@
+# LaTeX temporary and build files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.xdv
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+benchmark_results.json
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo

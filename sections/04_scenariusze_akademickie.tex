@@ -1,0 +1,72 @@
+\section{Scenariusze wdrożeniowe w działalności akademickiej}
+\label{sec:scenariusze_akademickie}
+
+Aby zweryfikować praktyczną użyteczność modelu ACF, zdefiniowano i zaimplementowano trzy kluczowe scenariusze operacyjne odpowiadające profilowi pracy studentów i wykładowców kierunków technicznych.
+
+\subsection{Scenariusz 1: Bezpieczny wywiad jawnoźródłowy (OSINT)}
+W procesie badawczym studenci i naukowcy poszukują literatury, analizują trendy rynkowe na portalach rekrutacyjnych, badają podatności publicznych systemów IT oraz weryfikują materiały nadsyłane ze źródeł otwartych. Działania te wiążą się z dwoma zasadniczymi zagrożeniami:
+\begin{itemize}
+    \item \textbf{Profilowanie behawioralne i fingerprinting:} przeglądanie komercyjnych serwisów badawczych i forów z poziomu standardowej przeglądarki umożliwia platformom analitycznym powiązanie zapytań z adresem IP uczelni oraz unikalnym odciskiem cyfrowym stacji roboczej;
+    \item \textbf{Infekcja złośliwym dokumentem:} pobieranie plików PDF lub DOCX z nieoficjalnych repozytoriów grozi wykonaniem wrogiego kodu przy użyciu podatności w parserach dokumentów.
+\end{itemize}
+
+W ramach modelu ACF zaimplementowano dwuetapowy mechanizm ochrony:
+\begin{enumerate}
+    \item \textbf{Efemeryczna sesja Whonix (\texttt{disp-anon-whonix}):} przeglądanie zasobów realizowane jest w jednorazowej maszynie spiętej z bramą Tor. Wszystkie parametry stosu TCP, zegara systemowego oraz rozdzielczości ekranu podlegają unifikacji. Po zakończeniu wyszukiwania maszyna jest bezpowrotnie niszczona wraz ze wszystkimi ciasteczkami sesyjnymi i historią przeglądania.
+    \item \textbf{Oczyszczanie dokumentów (\textit{Convert to Trusted PDF}):} pobrany z sieci niepewny plik PDF jest przesyłany z domeny OSINT do zaufanej domeny \texttt{work-academic} wyłącznie po przejściu procedury oczyszczania:
+\begin{lstlisting}[language=bash, caption={Uruchomienie konwersji niepewnego dokumentu w bezpieczną bitmapę.}]
+# Wywolanie z poziomu domeny OSINT do jednorazowego kontenera graficznego
+qvm-convert-pdf publikacja_z_nieznanego_zrodla.pdf
+\end{lstlisting}
+Procedura ta w locie powołuje jednorazową maszynę wirtualną pozbawioną sieci, renderuje każdą stronę dokumentu do postaci surowej tablicy pikseli (RGB bitmap), a następnie składa na ich podstawie nowy dokument PDF. Wszelkie exploity binarne, złośliwe makra czy skrypty JavaScript osadzone w oryginalnym pliku zostają bezpowrotnie zneutralizowane.
+\end{enumerate}
+
+\subsection{Scenariusz 2: Wytwarzanie oprogramowania a ataki na łańcuch dostaw (Supply Chain)}
+Współczesna dydaktyka programowania wymaga częstego korzystania z zewnętrznych menedżerów zależności (\texttt{npm}, \texttt{pip}, \texttt{cargo}). Jak wykazano w badaniach~\cite{pastrana2023malware}, napastnicy regularnie publikują w tych repozytoriach pakiety podszywające się pod popularne biblioteki (\textit{typosquatting}). Standardowy skrypt instalacyjny (np. \texttt{postinstall} w ekosystemie Node.js) uruchamia się z uprawnieniami bieżącego użytkownika i w tradycyjnym systemie może natychmiast odczytać katalogi \texttt{\textasciitilde/.ssh} czy \texttt{\textasciitilde/.aws/credentials}.
+
+W systemie Qubes OS zastosowano mechanizm \textbf{Split-SSH}:
+\begin{itemize}
+    \item Klucze kryptograficzne są generowane i przechowywane w odciętej od sieci domenie \texttt{vault-sec};
+    \item W domenie deweloperskiej \texttt{dev-trusted} klient \texttt{ssh} komunikuje się z atrapą gniazda (\textit{dummy socket}), która przekazuje żądania podpisania pakietu przez magistralę \texttt{qrexec};
+    \item Daemon w \texttt{dom0} wyświetla natywne okno autoryzacji z pytaniem: \textit{„Czy zezwolić dev-trusted na dostęp do klucza id\_ed25519 w vault-sec?”}.
+\end{itemize}
+Nawet w przypadku instalacji skrajnie złośliwego pakietu z biblioteki PyPI/npm, atakujący nie ma fizycznej możliwości skopiowania klucza prywatnego, ponieważ klucz ten nigdy nie pojawia się w pamięci RAM maszyny programistycznej.
+
+\subsection{Scenariusz 3: Zautomatyzowany potok bezpiecznej detonacji i weryfikacji prac studenckich (ZT-SCEP)}
+Weryfikacja prac laboratoryjnych z przedmiotów takich jak programowanie niskopoziomowe, algorytmy czy technologie sieciowe wiąże się z koniecznością kompilacji i uruchomienia setek plików nadesłanych przez studentów. Kod ten często zawiera:
+\begin{itemize}
+    \item błędy skutkujące zawieszeniem stacji (przypadkowe pętle \textit{fork bomb}, nieskończona alokacja pamięci);
+    \item celowe próby naruszenia środowiska oceniania (np. skanowanie portów w sieci lokalnej, próby odczytania testów sprawdzających, otwieranie gniazd nasłuchujących \textit{reverse shell}).
+\end{itemize}
+
+W ramach niniejszych badań opracowano potok \textbf{Zero-Trust Student Code Evaluation Pipeline (ZT-SCEP)}. Przepływ ewaluacji realizowany jest w następujących krokach:
+\begin{enumerate}
+    \item Prace studenckie (zarchiwizowane w formacie \texttt{.zip} lub \texttt{.tar.gz}) są gromadzone w domenie dydaktycznej \texttt{work-academic};
+    \item Skrypt weryfikujący wywołuje nowo powołaną maszynę jednorazową (\texttt{DispVM}) bazującą na szablonie \texttt{tpl-eval-sandbox}, którego interfejs sieciowy jest trwale wyłączony (\texttt{netvm=""});
+    \item Archiwum z kodem jest strumieniowane przez \texttt{qrexec} bezpośrednio na standardowe wejście (\texttt{stdin}) procesu ewaluacyjnego w maszynie efemerycznej;
+    \item Skrypt ewaluatora w \texttt{DispVM} nakłada rygorystyczne limity zasobów poprzez podsystem \texttt{systemd-run} / \texttt{cgroups} (maksymalnie 512~MB RAM, 10 sekund czasu CPU, zakaz tworzenia procesów potomnych powyżej 32 wątków);
+    \item Wyniki testów jednostkowych, raport z kompilacji oraz kod wyjścia są odsyłane przez \texttt{stdout} do domeny dydaktycznej;
+    \item Hipernadzorca Xen niszczy maszynę wirtualną wraz z całym stanem pamięci i dysku ulotnego.
+\end{enumerate}
+
+\begin{lstlisting}[language=bash, caption={Skrypt zarządcy potoku ZT-SCEP w domenie dydaktycznej (\texttt{work-academic}).}]
+#!/usr/bin/env bash
+# run_ztscep.sh -- uruchomienie bezpiecznej ewaluacji kodu studenckiego
+SUBMISSION_ARCHIVE="$1"
+STUDENT_ID="$2"
+
+echo "[*] Inicjalizacja izolowanej domeny detonacyjnej (DispVM)..."
+# Wywolanie uslugi RPC z przekierowaniem strumienia archiwum na stdin
+qrexec-client-vm @dispvm:tpl-eval-sandbox \
+    academic.EvaluateSubmission < "${SUBMISSION_ARCHIVE}" \
+    > "raport_${STUDENT_ID}.json"
+
+EXIT_STATUS=$?
+if [ $EXIT_STATUS -eq 0 ]; then
+    echo "[+] Ocena zakonczona sukcesem. Raport zapisany w work-academic."
+else
+    echo "[-] Wykryto anomalie lub przekroczenie limitow w kodzie studenta!"
+fi
+\end{lstlisting}
+
+Dzięki uniezależnieniu potoku od stosu sieciowego oraz wykorzystaniu jednorazowych maszyn Xen, stacja robocza wykładowcy pozostaje w 100\% odizolowana od jakichkolwiek skutków ubocznych badanego kodu.

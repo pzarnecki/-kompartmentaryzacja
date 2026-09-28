@@ -1,0 +1,30 @@
+\section{Dyskusja, ergonomia i aspekty wdrożeniowe}
+\label{sec:dyskusja_i_wdrozenie}
+
+Mimo bezdyskusyjnych zalet w zakresie bezpieczeństwa, wdrożenie architektury opartej na kompartmentaryzacji w środowisku akademickim napotyka na szereg wyzwań o charakterze technologicznym, ergonomicznym i organizacyjnym.
+
+\subsection{Krzywa uczenia i bariera wejścia}
+Najczęściej podnoszonym argumentem przeciwko powszechnemu stosowaniu Qubes OS jest stroma krzywa uczenia (\textit{steep learning curve}) oraz konieczność redefinicji przyzwyczajeń użytkownika:
+\begin{itemize}
+    \item \textbf{Higiena mentalna i identyfikacja domen:} użytkownik musi wypracować nawyk operowania w strefach zaufania. Kluczowym ułatwieniem w Qubes OS jest kolorystyczne kodowanie obramowań okien (np. czerwone dla niezweryfikowanych stron WWW, niebieskie dla spraw uczelnianych, czarne dla odciętego magazynu haseł). Badania wykazują, że po okresie adaptacji (trwającym zwykle 1--2 tygodnie) wskaźnik pomyłkowego przeklejania wrażliwych danych spada niemal do zera;
+    \item \textbf{Izolacja schowka (\textit{Inter-VM Clipboard}):} Qubes uniemożliwia bezpośrednie współdzielenie schowka pomiędzy domenami. Kopiowanie danych wymaga dwuetapowej sekwencji klawiszy (\texttt{Ctrl+C} w oknie źródłowym, a następnie \texttt{Ctrl+Shift+C} do globalnego bufora \texttt{dom0}), co chroni przed atakami typu \textit{clipboard hijacking}, lecz wymaga zdyscyplinowania użytkownika;
+    \item \textbf{Wymagania sprzętowe:} efektywne działanie hipernadzorcy Xen wymaga stacji roboczej wyposażonej w co najmniej 16~GB pamięci RAM (rekomendowane 32~GB) oraz szybki dysk NVMe. Ze względu na bezpieczeństwo GUI, Qubes OS celowo nie wspiera natywnej akceleracji GPU w domenach nieuprzywilejowanych. Choć stanowi to ograniczenie w modelowaniu 3D czy lokalnym trenowaniu sieci neuronowych, zadania te w warunkach akademickich są zazwyczaj delegowane na dedykowane serwery obliczeniowe zarządzane centralnie (np. klastry Proxmox~VE~\cite{zarnecki2026llm_proxmox}).
+\end{itemize}
+
+\subsection{Zgodność z RODO i suwerenność cyfrowa instytucji}
+W dobie zaostrzonych regulacji dotyczących ochrony danych osobowych (Rozporządzenie RODO / GDPR), uczelnie wyższe ponoszą bezpośrednią odpowiedzialność prawną za poufność przetwarzanych informacji. Wykładowcy przechowują na stacjach roboczych wrażliwe dane: numery albumów, wyniki egzaminów, opinie promotorskie oraz dane teleadresowe studentów.
+
+Model ACF bezpośrednio realizuje kluczowe zasady prawa ochrony danych:
+\begin{enumerate}
+    \item \textbf{Zasada integralności i poufności (art. 5 ust. 1 lit. f RODO):} separacja bazy ocen w domenie \texttt{work-academic} uniemożliwia jej kradzież przez złośliwy kod studencki detonowany w domenie \texttt{DispVM};
+    \item \textbf{Zasada minimalizacji i rozliczalności (art. 5 ust. 1 lit. c RODO):} wykorzystanie bezśladowego potoku OSINT opartego na maszynach jednorazowych zapobiega gromadzeniu niepotrzebnych danych telemetrycznych i ciasteczek śledzących;
+    \item \textbf{Suwerenność technologiczna:} Qubes OS jest projektem w pełni otwartoźródłowym, poddawanym ciągłemu audytowi społeczności międzynarodowej. W przeciwieństwie do komercyjnych systemów operacyjnych z telemetrią chmurową, żadne metadane dotyczące aktywności naukowej czy dydaktycznej nie są przesyłane do zewnętrznych korporacji technologicznych.
+\end{enumerate}
+
+\subsection{Rekomendacje metodyczne dla jednostek akademickich}
+Aby obniżyć barierę adaptacji i umożliwić studentom oraz pracownikom płynne korzystanie z zalet kompartmentaryzacji, zaleca się:
+\begin{itemize}
+    \item Przygotowanie przez uczelniany dział IT ustandaryzowanych szablonów (\textit{golden templates}) maszyn wirtualnych z preinstalowanymi narzędziami programistycznymi i dydaktycznymi;
+    \item Udostępnienie predefiniowanego zestawu reguł Qubes RPC w pliku konfiguracyjnym polityki (np. \texttt{30-academic.policy}), co eliminuje konieczność ręcznej konfiguracji mechanizmów Split-SSH i ZT-SCEP przez każdego użytkownika;
+    \item Wdrożenie warsztatów z zakresu higieny operacyjnej (OpSec) na wczesnych semestrach studiów informatycznych, traktujących pracę w środowisku kompartmentaryzowanym jako element kanonu nowoczesnej inżynierii bezpieczeństwa.
+\end{itemize}

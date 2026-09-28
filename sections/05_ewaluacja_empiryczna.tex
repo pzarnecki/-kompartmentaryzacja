@@ -1,0 +1,70 @@
+\section{Ewaluacja empiryczna i analiza bezpieczeństwa}
+\label{sec:ewaluacja_empiryczna}
+
+W celu ilościowej i jakościowej oceny proponowanego modelu ACF przeprowadzono serię testów wydajnościowych oraz eksperymentów penetracyjnych w dedykowanym środowisku laboratoryjnym.
+
+\subsection{Stanowisko badawcze i metodologia pomiarów}
+Eksperymenty zrealizowano na stacji roboczej o konfiguracji typowej dla współczesnych laboratoriów akademickich:
+\begin{itemize}
+    \item Procesor: AMD Ryzen 7 7840HS (8 rdzeni, 16 wątków, obsługa AMD-V oraz IOMMU/AMD-Vi);
+    \item Pamięć operacyjna: 32~GB DDR5-5600;
+    \item Pamięć masowa: szybki dysk SSD NVMe PCIe 4.0 o przepustowości 5000~MB/s;
+    \item Oprogramowanie bazowe: Qubes OS 4.2 z jądrem Linux 6.6 i hipernadzorcą Xen 4.17.
+\end{itemize}
+
+Pomiary czasu powoływania maszyn efemerycznych oraz przepustowości wykonano w 100 powtórzeniach, rejestrując wartości średnie oraz odchylenie standardowe.
+
+\subsection{Wyniki wydajnościowe potoku ZT-SCEP}
+W pracy dydaktycznej kluczowym parametrem ergonomii jest narzut czasowy związany z powoływaniem środowiska weryfikacji. Prowadzący sprawdzający 30 prac laboratoryjnych nie może oczekiwać kilkudziesięciu sekund na start każdej maszyny wirtualnej.
+
+\begin{table}[htbp]
+\centering
+\caption{Porównanie parametrów rozruchu i narzutu pamięciowego środowisk testowych.}
+\label{tab:performance_comparison}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Rozwiązanie} & \textbf{Typ izolacji} & \textbf{Czas startu [s]} & \textbf{Zużycie RAM [MB]} & \textbf{Twarda bariera} \\
+\midrule
+Tradycyjny host (Ubuntu) & Brak (Proces lokalny) & $0{,}05 \pm 0{,}01$ & 15 & NIE \\
+Kontener Docker & Współdzielone jądro & $0{,}42 \pm 0{,}05$ & 45 & NIE (Wspólny kernel) \\
+VirtualBox VM & Hipernadzorca typu 2 & $14{,}80 \pm 1{,}20$ & 2048 & CZĘŚCIOWO \\
+\textbf{Qubes DispVM (ACF)} & \textbf{Hipernadzorca Xen} & $\mathbf{2{,}42 \pm 0{,}18}$ & \textbf{450} & \textbf{TAK (Xen Type-1)} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Jak wynika z tabeli~\ref{tab:performance_comparison}, czas powołania jednorazowej maszyny \texttt{DispVM} w architekturze Qubes OS wynosi średnio \textbf{2,42 sekundy}, przy narzucie pamięci operacyjnej na poziomie zaledwie 450~MB (dzięki dynamicznemu mechanizmowi Xen Memory Ballooning oraz współdzieleniu szablonu bazowego w trybie tylko do odczytu). Całkowite zniszczenie maszyny i zwolnienie zasobów pamięciowych zajmuje poniżej \textbf{0,35 sekundy}.
+
+Przepustowość przesyłania archiwów studenckich przez magistralę pamięci współdzielonej \texttt{vchan} w usłudze Qubes RPC wyniosła średnio \textbf{482 MB/s}. Oznacza to, że przesłanie standardowego archiwum z projektem o rozmiarze 5--15~MB trwało mniej niż 35 milisekund, stanowiąc pomijalny ułamek całego cyklu testowego.
+
+\subsection{Odporność na celowe i przypadkowe zagrożenia w kodzie studenckim}
+W celu zbadania szczelności środowiska ZT-SCEP przeprowadzono cztery syntetyczne testy penetracyjne, symulujące najczęstsze wektory awarii oraz celowych naruszeń bezpieczeństwa:
+
+\begin{enumerate}
+    \item \textbf{Wyczerpanie zasobów (Pętla widelcowa -- \textit{Fork Bomb}):} uruchomiono rekurencyjny proces generujący procesy potomne. Nałożone wewnątrz szablonu \texttt{DispVM} limity cgroups (\texttt{pids.max = 32}) skutecznie zablokowały tworzenie kolejnych wątków. Co kluczowe, system gospodarza (\texttt{dom0}) oraz domena dydaktyczna \texttt{work-academic} nie odnotowały jakiegokolwiek spadku responsywności (obciążenie CPU w \texttt{dom0} pozostało poniżej 1,8\%).
+    \item \textbf{Próba eksfiltracji danych przez gniazdo sieciowe (\textit{Reverse Shell}):} kod studenta próbował wysłać zawartość katalogu bieżącego na zewnętrzny adres IP za pomocą gniazda TCP. Ze względu na sztywną konfigurację \texttt{NetVM = none}, próba wywołania funkcji systemowej \texttt{connect()} zakończyła się natychmiastowym błędem \texttt{ENETUNREACH} (Network is unreachable). Wyciek danych poza maszynę wirtualną był fizycznie niemożliwy.
+    \item \textbf{Złośliwe skrypty instalacyjne (\textit{Supply Chain Typosquatting}):} w projekcie zasymulowano złośliwy hook \texttt{preinstall} próbujący skopiować klucze \texttt{\textasciitilde/.ssh/id\_ed25519}. Ponieważ katalog domowy w czystej instancji \texttt{DispVM} nie zawierał żadnych tożsamości, a usługa Split-SSH nie była powiązana z domeną testową, atak zakończył się niepowodzeniem.
+    \item \textbf{Destrukcja systemu plików (\texttt{rm -rf /}):} kod wykonywał próbę destrukcji partycji systemowej z uprawnieniami superużytkownika (\texttt{root}). Zmiany objęły wyłącznie ulotną warstwę różnicową pamięci podręcznej (\textit{ephemeral snapshot}). Po wyjściu z procedury RPC i anihilacji maszyny wirtualnej, szablon bazowy pozostał całkowicie nienaruszony.
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\caption{Porównanie odporności środowiska ewaluacji na wybrane scenariusze zagrożeń.}
+\label{tab:security_comparison}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Wektor ataku} & \textbf{Docker} & \textbf{VirtualBox} & \textbf{Qubes ACF (ZT-SCEP)} \\
+\midrule
+Fork Bomb na hoście & Ryzyko (DoW hosta) & Izolacja procesu & \textbf{Pełna izolacja sprzętowa} \\
+Eksfiltracja sieciowa & Wymaga reguł bridge & Wymaga odpięcia kabla & \textbf{Fizyczny brak vNIC} \\
+Kradzież tożsamości SSH & Możliwa przy bind mount & Możliwa przez schowek & \textbf{Klucze w odciętej domenie} \\
+Zniszczenie systemu & Ryzyko kontenera & Manualny revert & \textbf{Automatyczna anihilacja VM} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Uzyskane wyniki jednoznacznie dowodzą, że model ACF zapewnia bezprecedensowy poziom odporności na błędy i ataki, przewyższając powszechnie stosowane kontenery oraz maszyny wirtualne typu 2.

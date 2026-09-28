@@ -1,0 +1,14 @@
+\section{Podsumowanie i wnioski}
+\label{sec:podsumowanie}
+
+W dobie dynamicznie ewoluujących cyberzagrożeń, paradygmat ochrony stacji roboczych oparty na tradycyjnych systemach monolitycznych i antywirusach stał się dalece niewystarczający w specyficznym, otwartym środowisku akademickim. Konieczność codziennego przetwarzania niezweryfikowanych materiałów z sieci, poszukiwania informacji jawnoźródłowych (OSINT), instalowania setek zewnętrznych zależności programistycznych oraz laboratoryjnego uruchamiania kodu nadesłanego przez studentów wymaga wdrożenia bezwzględnej izolacji sprzętowej.
+
+W niniejszym artykule przedstawiono kompleksową koncepcję, architekturę oraz ewaluację empiryczną modelu \textbf{Academic Compartmentalization Framework (ACF)}, opartego na systemie \textbf{Qubes OS 4.2} i hipernadzorcy typu 1 \textbf{Xen}. Do najważniejszych osiągnięć pracy należą:
+\begin{enumerate}
+    \item \textbf{Opracowanie bezśladowego potoku badawczego OSINT:} integracja efemerycznych instancji Whonix z mechanizmem automatycznego oczyszczania dokumentów (\textit{Convert to Trusted PDF}) umożliwiła prowadzenie zaawansowanego wywiadu otwartego bez ryzyka profilowania cyfrowego, ujawnienia tożsamości sieciowej uczelni czy infekcji złośliwymi exploitami;
+    \item \textbf{Wdrożenie ochrony tożsamości kryptograficznej programisty:} zastosowanie architektury Split-SSH i Split-GPG pozwoliło na całkowite unieszkodliwienie wektorów kradzieży poświadczeń wynikających z ataków typu \textit{supply chain} w ekosystemach pakietów \texttt{npm} i \texttt{pip};
+    \item \textbf{Stworzenie i przetestowanie potoku ZT-SCEP:} autorski mechanizm ewaluacji prac studenckich z wykorzystaniem magistrali Qubes RPC (\texttt{qrexec}) i jednorazowych maszyn wirtualnych bez interfejsu sieciowego (\texttt{DispVM}) zagwarantował 100\% odporność stacji roboczej na celowe i przypadkowe exploity (w tym pętle \textit{fork bomb}, próby nawiązania \textit{reverse shell} oraz destrukcję plików);
+    \item \textbf{Weryfikacja wydajnościowa i użytkowa:} pomiary empiryczne potwierdziły, że czas powołania maszyny jednorazowej (średnio 2,42~s) oraz narzut pamięciowy (450~MB) w pełni predysponują to rozwiązanie do zastosowań w codziennej praktyce laboratoryjnej.
+\end{enumerate}
+
+Kierunkiem dalszych prac badawczo-rozwojowych będzie opracowanie zautomatyzowanego mostu integrującego potok ZT-SCEP z uczelnianymi systemami zarządzania nauczaniem (LMS, takimi jak Moodle czy Canvas) za pośrednictwem asynchronicznych brokerów komunikatów, a także integracja fizycznych tokenów sprzętowych FIDO2 z domeną kluczy \texttt{vault-sec} w celu zapewnienia pełnego łańcucha zaufania od warstwy fizycznej po dydaktyczną.

@@ -1,0 +1,100 @@
+\section{Architektura systemu i formalny model zaufania (ACF)}
+\label{sec:architektura_i_model}
+
+W celu zapewnienia bezkompromisowego bezpieczeństwa stacji roboczej pracownika naukowo-dydaktycznego oraz studenta, w ramach niniejszych badań opracowano formalny model wielodomenowej separacji -- \textbf{Academic Compartmentalization Framework (ACF)}.
+
+\subsection{Koncepcja stref zaufania i izolacji domenowej}
+Model ACF kategoryzuje operacje akademickie na pięć ortogonalnych warstw zaufania, mapowanych bezpośrednio na domeny wirtualne (\textit{qubes}) hipernadzorcy Xen, zgodnie z zasadą najmniejszych uprawnień (\textit{Principle of Least Privilege}):
+\begin{enumerate}
+    \item \textbf{Warstwa sprzętowa i sterowników (IOMMU Passthrough):}
+    \begin{itemize}
+        \item \texttt{sys-net} -- domena izolująca fizyczne kontrolery Ethernet i Wi-Fi. Ewentualna kompromitacja sterownika bezprzewodowego (częsty wektor ataków radiowych) nie ma wpływu na system macierzysty;
+        \item \texttt{sys-usb} -- domena izolująca kontrolery USB. Skutecznie neutralizuje wektory sprzętowe, takie jak złośliwe kontrolery firmware (\textit{BadUSB}) nadsyłane lub przynoszone przez studentów na nośnikach pamięci flash;
+        \item \texttt{sys-firewall} -- pośrednicząca zapora sieciowa filtrująca ruch pomiędzy domenami roboczymi a bramami wyjściowymi.
+    \end{itemize}
+    \item \textbf{Warstwa tożsamości i kryptografii (\textit{Air-Gapped Vaults}):}
+    \begin{itemize}
+        \item \texttt{vault-sec} -- całkowicie odcięta od sieci wirtualna maszyna przechowująca prywatne klucze PGP/GPG, certyfikaty tożsamości X.509, klucze ed25519 dla protokołu SSH oraz bazę haseł. Magazyn ten nigdy nie wchodzi w bezpośrednią interakcję ze światem zewnętrznym.
+    \end{itemize}
+    \item \textbf{Warstwa zaufanej pracy akademickiej (\textit{Trusted Academic Realm}):}
+    \begin{itemize}
+        \item \texttt{work-academic} -- domena przeznaczona do edycji dokumentów, przygotowywania materiałów dydaktycznych, obsługi poczty instytucjonalnej oraz wprowadzania ocen do uczelnianego systemu dziekanatowego;
+        \item \texttt{dev-trusted} -- środowisko deweloperskie zaufanych projektów badawczych i publikacyjnych, posiadające dostęp do sieci zewnętrznej w celach synchronizacji repozytoriów git.
+    \end{itemize}
+    \item \textbf{Warstwa wywiadu jawnoźródłowego (\textit{OSINT Realm}):}
+    \begin{itemize}
+        \item \texttt{sys-whonix} i efemeryczne instancje \texttt{disp-anon-whonix} -- izolowane środowisko analizy źródeł otwartych, uniemożliwiające profilowanie i śledzenie adresu IP uczelni.
+    \end{itemize}
+    \item \textbf{Warstwa detonacji i weryfikacji kodu (\textit{Detonation Sandbox}):}
+    \begin{itemize}
+        \item \texttt{disp-eval-sandbox} -- jednorazowa maszyna wirtualna bez jakiegokolwiek interfejsu sieciowego (\texttt{NetVM = none}), powoływana wyłącznie na czas testów niezweryfikowanego kodu studenckiego.
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    node distance=1.1cm and 1.2cm,
+    every node/.style={font=\sffamily\footnotesize},
+    box/.style={rectangle, draw=black!70, rounded corners=3pt, thick, align=center, fill=white, drop shadow},
+    vault/.style={box, fill=purple!15, draw=purple!80},
+    trusted/.style={box, fill=blue!15, draw=blue!80},
+    osint/.style={box, fill=green!15, draw=green!80},
+    untrusted/.style={box, fill=red!15, draw=red!80},
+    infra/.style={box, fill=gray!15, draw=gray!80},
+    xen/.style={rectangle, draw=black, thick, fill=yellow!20, minimum width=13cm, minimum height=0.9cm, font=\sffamily\bfseries\small},
+    arrow/.style={-{Stealth[length=2.5mm]}, thick},
+    dashedarrow/.style={-{Stealth[length=2.5mm]}, thick, dashed}
+]
+
+% Hypervisor Xen
+\node[xen] (xen) at (0,0) {Hipernadzorca Xen 4.17 (Bare-Metal Type-1 Hypervisor)};
+
+% Hardware
+\node[box, fill=gray!30, below=0.5cm of xen, minimum width=13cm] (hw) {Fizyczny sprzęt: CPU (Intel VT-x / AMD-V), IOMMU (VT-d / AMD-Vi), TPM 2.0, Pamięć RAM};
+
+% dom0
+\node[box, fill=black!10, draw=black, above=0.7cm of xen.west, anchor=south west, minimum width=3.0cm, minimum height=1.6cm] (dom0) {\textbf{dom0} \\ (Zarządzanie GUI, \\ Qrexec Policy, \\ \textit{Brak sieci})};
+
+% Domains
+\node[vault, above=0.7cm of xen, xshift=-1.6cm, minimum width=2.4cm, minimum height=1.6cm] (vault) {\textbf{vault-sec} \\ Klucze SSH/GPG \\ Hasła \\ \textit{NetVM = none}};
+
+\node[trusted, right=0.4cm of vault, minimum width=2.4cm, minimum height=1.6cm] (work) {\textbf{work-academic} \\ Dydaktyka, Publikacje \\ Dziekanat / Poczta};
+
+\node[osint, right=0.4cm of work, minimum width=2.4cm, minimum height=1.6cm] (osint) {\textbf{disp-anon-osint} \\ Badania OSINT \\ Rynek pracy, granty \\ \textit{Whonix / Tor}};
+
+\node[untrusted, right=0.4cm of osint, minimum width=2.5cm, minimum height=1.6cm] (deton) {\textbf{disp-eval-sandbox} \\ Detonacja kodu \\ Prace studentów \\ \textit{NetVM = none}};
+
+% Infra domains below
+\node[infra, above=2.7cm of work, xshift=-0.5cm, minimum width=2.2cm] (firewall) {\texttt{sys-firewall}};
+\node[infra, left=0.4cm of firewall, minimum width=2.0cm] (net) {\texttt{sys-net} \\ (Karty NIC)};
+\node[infra, right=0.4cm of firewall, minimum width=2.2cm] (whonix) {\texttt{sys-whonix} \\ (Brama Tor)};
+
+% Connections
+\draw[arrow] (work) -- (firewall);
+\draw[arrow] (firewall) -- (net);
+\draw[arrow] (osint) -- (whonix);
+\draw[arrow] (whonix) -- (firewall);
+
+% Qrexec channels
+\draw[dashedarrow, purple!80] (work) -- node[above, sloped] {\tiny Split-SSH} (vault);
+\draw[dashedarrow, red!80] (work) -- node[above, sloped] {\tiny qrexec ZT-SCEP} (deton);
+
+\end{tikzpicture}%
+}
+\caption{Architektura modelu ACF (Academic Compartmentalization Framework) na bazie Qubes OS 4.2. Linie ciągłe oznaczają ruch sieciowy; linie przerywane wskazują bezpieczne wywołania procedur Qubes RPC (\texttt{qrexec}).}
+\label{fig:acf_architecture}
+\end{figure}
+
+\subsection{Magistrala Qubes RPC (\texttt{qrexec}) jako szkielet komunikacji Zero-Trust}
+Kluczowym elementem wyróżniającym Qubes OS na tle innych rozwiązań jest mechanizm komunikacji między-domenowej \textbf{Qubes RPC} (\texttt{qrexec})~\cite{qubes_qrexec2024}. W tradycyjnych systemach wymiana danych pomiędzy maszynami wirtualnymi wymaga utworzenia wirtualnego interfejsu sieciowego (vNIC), co natychmiast otwiera przestrzeń na ataki sieciowe (skanowanie portów, exploity stosu TCP/IP).
+
+W Qubes OS \texttt{qrexec} opiera się na wydzielonych kanałach pamięci współdzielonej (\textit{vchan}) zarządzanych bezpośrednio przez hipernadzorcę Xen. Każde żądanie wywołania usługi RPC podlega rygorystycznej ewaluacji w silniku polityk znajdującym się w \texttt{dom0}. W systemie Qubes OS 4.2 wprowadzono modularną strukturę reguł zapisaną w katalogu \texttt{/etc/qubes/policy.d/}. Przykładowa reguła zezwalająca wyłącznie domenie programistycznej na odpytanie magazynu kluczy o podpis kryptograficzny bez udostępniania samego klucza prywatnego ma postać:
+\begin{lstlisting}[language=bash, caption={Konfiguracja polityki Qubes RPC dla usługi Split-GPG w systemie Qubes OS 4.2.}]
+# /etc/qubes/policy.d/30-academic-crypto.policy
+qubes.Gpg  *  dev-trusted  vault-sec  ask  default_target=vault-sec
+qubes.Gpg  *  *            vault-sec  deny
+\end{lstlisting}
+
+Powyższa polityka gwarantuje, że żadna inna domena (a w szczególności zanieczyszczone środowisko detonacji czy przeglądania stron) nie ma możliwości zażądania operacji kryptograficznej, a każda próba użycia klucza w \texttt{dev-trusted} wymaga jawnej akceptacji użytkownika w bezpiecznym oknie dialogowym generowanym bezpośrednio przez \texttt{dom0}.
